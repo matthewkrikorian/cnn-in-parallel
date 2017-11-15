@@ -21,7 +21,6 @@ void forward(mshadow::Tensor<cpu, 4, DType> &y, const mshadow::Tensor<cpu, 4, DT
     The goal here is to be correct, not fast (this is the CPU implementation.)
     */
 
-
     const int B = x.shape_[0];
     const int M = y.shape_[1];
     const int C = x.shape_[1];
@@ -29,14 +28,25 @@ void forward(mshadow::Tensor<cpu, 4, DType> &y, const mshadow::Tensor<cpu, 4, DT
     const int W = x.shape_[3];
     const int K = k.shape_[3];
 
-    for (int b = 0; b < B; ++b) {
-      for (int m = 0; m < B; m++) {
-        for (int h = 0; h < H - K + 1; h++) {
-          for (int w = 0; w < W - K + 1; w++) {
+    int H_out = H - K + 1;
+    int W_out = W - K + 1;
+
+    for (int b = 0; b < B; ++b)
+    {
+      for (int m = 0; m < M; m++)
+      {
+        for (int h = 0; h < H_out; h++)
+        {
+          for (int w = 0; w < W_out; w++)
+          {
             y[b][m][h][w] = 0;
-            for (int c = 0; c < C; c++) {
-              for (int p = 0; p < K; p++) {
-                for (int q = 0; q < K; q++) {
+
+            for (int c = 0; c < C; c++)
+            {
+              for (int p = 0; p < K; p++)
+              {
+                for (int q = 0; q < K; q++)
+                {
                   y[b][m][h][w] += x[b][c][h + p][w + q] * k[m][c][p][q];
                 }
               }
