@@ -14,13 +14,6 @@ namespace op
 template <typename cpu, typename DType>
 void forward(mshadow::Tensor<cpu, 4, DType> &y, const mshadow::Tensor<cpu, 4, DType> &x, const mshadow::Tensor<cpu, 4, DType> &k)
 {
-    /*
-    Modify this function to implement the forward pass described in Chapter 16.
-    The code in 16 is for a single image.
-    We have added an additional dimension to the tensors to support an entire mini-batch
-    The goal here is to be correct, not fast (this is the CPU implementation.)
-    */
-
     const int B = x.shape_[0];
     const int M = y.shape_[1];
     const int C = x.shape_[1];
