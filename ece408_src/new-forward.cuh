@@ -9,7 +9,7 @@ namespace mxnet
 namespace op
 {
 
-#define TILE_WIDTH  1
+#define TILE_WIDTH 1
 
 __global__ void forward_kernel(float *y, const float *x, const float *k, const int B, const int M, const int C, const int H, const int W, const int K) {
 
