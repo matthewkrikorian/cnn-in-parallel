@@ -10,6 +10,7 @@ namespace op
 {
 
 #define TILE_WIDTH 32
+#define TILE_SIZE 1024
 
 __global__ void forward_kernel(float *y, const float *x, const float *k, const int B, const int M, const int C, const int H, const int W, const int K) {
 
@@ -28,7 +29,6 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     #define k4d(i3,i2,i1,i0) k[(i3) * (C * K * K) + (i2)*(K * K) + (i1)*(K) + i0]
 
 /*  Only works for TILE_WIDTH = 1, roughly 14,000 ms
-
     int W_grid = ceil(W_out / (float)TILE_WIDTH);
     int H_grid = ceil(H_out / (float)TILE_WIDTH);
     int n, m, h, w, c, p, q;
@@ -36,7 +36,6 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     m = blockIdx.y;
     h = blockIdx.z / W_grid + threadIdx.y;
     w = blockIdx.z % W_grid + threadIdx.x;
-
     float acc = 0;
     for (c = 0; c < C; c++) {
       for (p = 0; p < K; p++) {
@@ -46,7 +45,6 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
           }
         }
     }
-
     y4d(n, m, h, w) = acc;
 */
 
@@ -71,8 +69,8 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     w0 = threadIdx.y;
 
     // Textbook says TILE_SIZE, maybe a typo. I'm going to try TILE_WIDTH
-    h_base = (blockIdx.z / W_grid) * TILE_WIDTH;
-    w_base = (blockIdx.z % W_grid) * TILE_WIDTH;
+    h_base = (blockIdx.z / W_grid) * TILE_SIZE;
+    w_base = (blockIdx.z % W_grid) * TILE_SIZE;
 
     h = h_base + h0;
     w = w_base + w0;
@@ -83,17 +81,21 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
 
     for(c = 0; c < C; c++)
     {
-      if((h0 < K) && (w0 < K))
+      if((h0 < K) && (w0 < K) && (m < M))
       {
-        W_shared[h0, w0] = k4d(m, c, h0, w0);
-        __syncthreads();
+        W_shared[h0*K+w0] = k4d(m, c, h0, w0);
       }
+
+      __syncthreads();
 
       for(i = h; i < h_base + X_tile_width; i += TILE_WIDTH)
       {
         for(j = w; j < w_base + X_tile_width; j += TILE_WIDTH)
         {
-          X_shared[i - h_base, j - w_base] = x4d(n, c, h, w);
+          if(h < H && w < W)
+          {
+            X_shared[(i - h_base)*X_tile_width + (j - w_base)] = x4d(n, c, h, w);
+          }
         }
       }
 
@@ -103,12 +105,18 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
       {
         for(q = 0; q < K; q++)
         {
-          acc += X_shared[h + p, w + q] * W_shared[p, q];
+          if (h+p < H && w+q < W)
+          {
+            acc += X_shared[(h + p)*X_tile_width + (w + q)] * W_shared[p*K+q];
+          }
         }
       }
-
       __syncthreads();
 
+    }
+
+    if(h < H && w < W && m < M)
+    {
       y4d(n, m, h, w) = acc;
     }
 
@@ -146,14 +154,13 @@ void forward<gpu, float>(mshadow::Tensor<gpu, 4, float> &y, const mshadow::Tenso
     dim3 gridDim(B, M, Z);
 
     // Declare shared memory variable
-    size_t shmem_size = sizeof(float) * ((TILE_WIDTH + K-1)*(TILE_WIDTH + K-1) + K*K);
+    size_t shmem_size = sizeof(float)*((TILE_WIDTH + K-1)*(TILE_WIDTH + K-1) + K*K);
 
     // Call the kernel
     forward_kernel<<<gridDim, blockDim, shmem_size, s>>>(y.dptr_,x.dptr_,w.dptr_, B,M,C,H,W,K);
 
     // Use MSHADOW_CUDA_CALL to check for CUDA runtime errors.
     MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
-
 }
 
 
