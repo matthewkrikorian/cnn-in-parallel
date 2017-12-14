@@ -9,7 +9,7 @@ namespace mxnet
 namespace op
 {
 
-#define TILE_WIDTH 4
+#define TILE_WIDTH 8
 #define TILE_SIZE 64
 
 __global__ void forward_kernel(float *y, const float *x, const float *k, const int B, const int M, const int C, const int H, const int W, const int K) {
@@ -28,9 +28,8 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     #define x4d(i3,i2,i1,i0) x[(i3) * (C * H * W) + (i2)*(H * W) + (i1)*(W) + i0]
     #define k4d(i3,i2,i1,i0) k[(i3) * (C * K * K) + (i2)*(K * K) + (i1)*(K) + i0]
 
-/*  450 ms with TILE_WIDTH 8
     int W_grid = (int) ceil(W_out / TILE_WIDTH * 1.0);
-//  int H_grid = ceil(H_out / TILE_WIDTH * 1.0);
+    //  int H_grid = ceil(H_out / TILE_WIDTH * 1.0);
     int n, m, h, w, c, p, q;
     n = blockIdx.x;
     m = blockIdx.y;
@@ -48,8 +47,8 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     }
 
     y4d(n, m, h, w) = acc;
-*/
 
+/*
     // Implementation starts at p. 15, Chapter 16 of the textbook
     int n, m, h0, w0, h_base, w_base, h, w;
 
@@ -121,7 +120,7 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     {
       y4d(n, m, h, w) = acc;
     }
-
+*/
     #undef y4d
     #undef x4d
     #undef k4d
