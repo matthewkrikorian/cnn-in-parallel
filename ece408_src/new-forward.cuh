@@ -1,4 +1,3 @@
-
 #ifndef MXNET_OPERATOR_NEW_FORWARD_CUH_
 #define MXNET_OPERATOR_NEW_FORWARD_CUH_
 
@@ -26,28 +25,6 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     #define y4d(i3,i2,i1,i0) y[(i3) * (M * H_out * W_out) + (i2)*(H_out * W_out) + (i1)*(W_out) + i0]
     #define x4d(i3,i2,i1,i0) x[(i3) * (C * H * W) + (i2)*(H * W) + (i1)*(W) + i0]
     #define k4d(i3,i2,i1,i0) k[(i3) * (C * K * K) + (i2)*(K * K) + (i1)*(K) + i0]
-
-/*
-    int W_grid = (int) ceil(W_out / TILE_WIDTH * 1.0);
-    //  int H_grid = ceil(H_out / TILE_WIDTH * 1.0);
-    int n, m, h, w, c, p, q;
-    n = blockIdx.x;
-    m = blockIdx.y;
-    h = (blockIdx.z / W_grid) * TILE_WIDTH + threadIdx.y;
-    w = (blockIdx.z % W_grid) * TILE_WIDTH + threadIdx.x;
-
-    float acc = 0.0;
-    for (c = 0; c < C; c++) {
-      for (p = 0; p < K; p++) {
-        for (q = 0; q < K; q++) {
-//        if (h+p < H && w+q < W)
-            acc += x4d(n, c, h+p, w+q) * k4d(m, c, p, q);
-          }
-        }
-    }
-
-    y4d(n, m, h, w) = acc;
-*/
 
     // Implementation starts at p. 15, Chapter 16 of the textbook
     int n, m, h0, w0, h_base, w_base, h, w;
