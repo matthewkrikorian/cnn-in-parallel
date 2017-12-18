@@ -27,9 +27,9 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     #define k4d(i3,i2,i1,i0) k[(i3) * (C * K * K) + (i2)*(K * K) + (i1)*(K) + i0]
 
     // Implementation starts at p. 15, Chapter 16 of the textbook
-    int n, m, h0, w0, h_base, w_base, h, w;
 
-    int X_tile_width = TILE_WIDTH + K - 1;
+    const int X_tile_width = TILE_WIDTH + K - 1;
+    const int x_tile_tile_width = X_tile_width * TILE_WIDTH;
 
     // shared memory array
     extern __shared__ float shmem[];
@@ -38,21 +38,24 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     float* X_shared = &shmem[0];
     float* W_shared = &shmem[X_tile_width * X_tile_width];
 
-    n = blockIdx.x;
-    m = blockIdx.y;
-    h0 = threadIdx.x;
-    w0 = threadIdx.y;
+    const int n = blockIdx.x;
+    const int m = blockIdx.y;
+    const int h0 = threadIdx.x;
+    const int w0 = threadIdx.y;
 
     // Textbook says TILE_SIZE, maybe a typo. I'm going to try TILE_WIDTH
-    h_base = blockIdx.z / ((H_out-1)/TILE_WIDTH+1) * (TILE_WIDTH);
-    w_base = blockIdx.z % ((W_out-1)/TILE_WIDTH+1) * (TILE_WIDTH);
+    const int h_base = blockIdx.z / ((H_out-1)/TILE_WIDTH+1) * (TILE_WIDTH);
+    const int w_base = blockIdx.z % ((W_out-1)/TILE_WIDTH+1) * (TILE_WIDTH);
 
-    h = h_base + h0;
-    w = w_base + w0;
+    const int h = h_base + h0;
+    const int w = w_base + w0;
 
     float acc = 0;
 
     int c, i, j, p, q;
+    
+    const int h0temp = h0*X_tile_width;
+    const int k2 = K * K;
 
     for(c = 0; c < C; c++)
     {
@@ -61,23 +64,25 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
         W_shared[h0*K+w0] = k4d(m, c, h0, w0);
       }
 
-      __syncthreads();
+      //__syncthreads();
 
-      for(i = h; i < h_base + X_tile_width; i += TILE_WIDTH)
+      int itemp = h0temp;
+      for(i = h; i < h_base + X_tile_width; i += TILE_WIDTH, itemp += x_tile_tile_width)
       {
         for(j = w; j < w_base + X_tile_width; j += TILE_WIDTH)
         {
-            X_shared[(i - h_base)*X_tile_width + (j - w_base)] = x4d(n, c, i, j);
+            X_shared[itemp + (j - w_base)] = x4d(n, c, i, j);
         }
       }
 
       __syncthreads();
 
-      for(p = 0; p < K; p++)
+      int ptemp = h0temp;
+      for(p = 0; p < k2; p += K, ptemp += X_tile_width)
       {
         for(q = 0; q < K; q++)
         {
-            acc += X_shared[(h0 + p)*X_tile_width + (w0 + q)] * W_shared[p*K+q];
+            acc += X_shared[ptemp + (w0 + q)] * W_shared[p+q];
         }
       }
       __syncthreads();
