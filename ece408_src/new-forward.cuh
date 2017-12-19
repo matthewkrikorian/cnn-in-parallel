@@ -53,7 +53,7 @@ __global__ void forward_kernel(float *y, const float *x, const float *k, const i
     float acc = 0;
 
     int c, i, j, p, q;
-    
+
     const int h0temp = h0*X_tile_width;
     const int k2 = K * K;
 
