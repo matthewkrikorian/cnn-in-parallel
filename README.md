@@ -578,3 +578,7 @@ Modify `build.sh` to point at your mxnet code.
 ## License
 
 NCSA/UIUC © [Carl Pearson](https://cwpearson.github.io)
+
+## Final Result
+
+71/100
